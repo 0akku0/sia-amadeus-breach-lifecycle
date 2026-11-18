@@ -6,11 +6,12 @@ An interactive case study of the Amadeus booking-platform breach disclosed in Oc
 
 ## What it covers
 
-1. **Timeline** from the first known access (August 2023) to SIA's disclosure (4 November 2026), with a proportional view of the 3-year dwell time against the 3-week disclosure window.
-2. **Attack path diagram.** Click a node to see what happened at that point, and where SIA sits relative to the breach.
-3. **Lifecycle in 8 stages**, mapped to MITRE ATT&CK tactics and techniques (T1078 Valid Accounts, T1190, T1213, T1552). Each stage separates what is **confirmed**, what is **still unknown**, and what is **likely** based on how similar attacks work.
-4. **What could have been done differently**, split by owner (Amadeus as the vendor, SIA as the customer) and mapped to CompTIA Security+ SY0-701 domains.
-5. **Takeaways** and a full source list.
+1. **Scroll-driven design:** sections reveal as you scroll, and the attack diagram stays pinned while each stage lights up its part of the attack (zooms in on mobile).
+2. **Timeline** from the first known access (August 2023) to SIA's disclosure (4 November 2026), with a proportional view of the 3-year dwell time against the 2-week disclosure window.
+3. **Attack path diagram** showing where SIA sits relative to the breach.
+4. **Lifecycle in 8 stages**, mapped to MITRE ATT&CK tactics and techniques (T1078 Valid Accounts, T1190, T1213, T1552). Each stage separates what is **confirmed**, what is **still unknown**, and what is **likely** based on how similar attacks work.
+5. **What could have been done differently**, split by owner (Amadeus as the vendor, SIA as the customer) and mapped to CompTIA Security+ SY0-701 domains.
+6. **Takeaways** and a full source list.
 
 ## Method
 
@@ -27,7 +28,7 @@ Plain HTML, CSS and JavaScript. No framework and no build step. All content live
 index.html      page structure
 css/style.css   styles (responsive, respects reduced motion)
 js/data.js      timeline, stages, controls and sources
-js/app.js       rendering, SVG attack-path diagram, filters
+js/app.js       rendering, scroll effects, SVG attack-path diagram
 ```
 
 Run locally: open `index.html` in a browser.

@@ -2,181 +2,225 @@
   "use strict";
 
   const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const stageById = Object.fromEntries(STAGES.map((s) => [s.id, s]));
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const srcKeys = Object.keys(SOURCES);
 
   function cite(keys) {
-    return '<span class="cite">Source: ' + keys.map((k, i) => {
+    return '<span class="cite">Source' + (keys.length > 1 ? "s" : "") + ": " + keys.map((k) => {
       const s = SOURCES[k];
-      return '<a href="' + esc(s.url) + '" target="_blank" rel="noopener" title="' + esc(s.label) + '">[' + (Object.keys(SOURCES).indexOf(k) + 1) + "]</a>";
+      return '<a href="' + esc(s.url) + '" target="_blank" rel="noopener" title="' + esc(s.label) + '">[' + (srcKeys.indexOf(k) + 1) + "]</a>";
     }).join(" ") + "</span>";
   }
+  const pill = (tag) => '<span class="pill ' + tag + '">' + (tag === "confirmed" ? "Confirmed" : "Inferred") + "</span>";
+  const delay = (i, step) => ' style="transition-delay:' + Math.min(i * step, 600) + 'ms"';
 
-  function pill(tag) {
-    return '<span class="pill ' + tag + '">' + (tag === "confirmed" ? "Confirmed" : "Inferred") + "</span>";
-  }
-
-  /* Stats */
-  $("#stats").innerHTML = STATS.map((s) =>
-    '<div class="stat"><b>' + esc(s.value) + "</b><span>" + esc(s.label) + "</span></div>"
+  /* ---------- Hero stats with count-up ---------- */
+  $("#stats").innerHTML = STATS.map((s, i) =>
+    '<div class="stat reveal"' + delay(i, 90) + '><b data-count="' + esc(s.value) + '">' + esc(s.value) + "</b><span>" + esc(s.label) + "</span></div>"
   ).join("");
 
-  /* Timeline ribbon: proportional view of Aug 2023 to Nov 2026 */
+  function countUp(el) {
+    const m = el.dataset.count.match(/^(\D*)([\d,]+)(.*)$/);
+    if (!m || reduced) return;
+    const target = parseInt(m[2].replace(/,/g, ""), 10);
+    const t0 = performance.now(), dur = 1400;
+    function tick(now) {
+      const p = Math.min((now - t0) / dur, 1);
+      const v = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      el.textContent = m[1] + v.toLocaleString("en-US") + m[3];
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ---------- Timeline ribbon ---------- */
   (function ribbon() {
-    const start = Date.parse("2023-08-01");
-    const end = Date.parse("2026-11-15");
+    const start = Date.parse("2023-07-01"), end = Date.parse("2026-11-20");
     const pct = (iso) => ((Date.parse(iso) - start) / (end - start)) * 100;
-    const dwellL = pct("2023-08-10");
-    const dwellR = pct("2026-09-23");
-    const burstL = pct("2026-10-20");
-    const burstR = pct("2026-11-04");
-    const years = ["2024-01-01", "2025-01-01", "2026-01-01"];
+    const dL = pct("2023-08-10"), dR = pct("2026-09-23"), bL = pct("2026-10-20"), bR = pct("2026-11-04");
     $("#ribbon").innerHTML =
-      '<div class="dwell" style="left:' + dwellL + "%;width:" + (dwellR - dwellL) + '%"></div>' +
-      '<span class="lbl dwell-lbl" style="left:calc(' + dwellL + '% + 10px)">Undetected access, ~37 months</span>' +
-      '<div class="burst" style="left:' + burstL + "%;width:" + Math.max(burstR - burstL, 0.8) + '%" title="Disclosures: 20 Oct to 4 Nov 2026"></div>' +
-      years.map((y) => '<span class="lbl" style="left:' + pct(y) + '%">' + y.slice(0, 4) + "</span>").join("");
+      '<span class="cap red"><span class="long">Undetected access: </span>~37 months</span>' +
+      '<span class="cap green"><span class="long">Disclosures: about </span>2 weeks</span>' +
+      '<div class="track"></div>' +
+      '<div class="dwell" style="left:' + dL + "%;--w:" + (dR - dL) + '%"></div>' +
+      '<div class="burst" style="left:' + bL + "%;width:" + Math.max(bR - bL, 1) + '%"></div>' +
+      ["2024", "2025", "2026"].map((y) => '<span class="lbl" style="left:' + pct(y + "-01-01") + '%">' + y + "</span>").join("");
   })();
 
-  /* Timeline events */
+  /* ---------- Timeline events ---------- */
   $("#events").innerHTML = TIMELINE.map((e) =>
-    '<li class="event' + (e.span ? " span" : "") + (e.cluster ? " cluster" : "") + '">' +
-      "<time>" + esc(e.date) + "</time> " + pill(e.tag) +
-      "<h3>" + esc(e.title) + "</h3>" +
-      "<p>" + esc(e.body) + "</p>" + cite(e.src) +
+    '<li class="event reveal' + (e.span ? " span" : "") + '">' +
+      "<time>" + esc(e.date) + "</time>" +
+      "<div><h3>" + esc(e.title) + pill(e.tag) + "</h3>" +
+      "<p>" + esc(e.body) + "</p>" + cite(e.src) + "</div>" +
     "</li>"
   ).join("");
 
-  /* Attack path diagram */
+  /* ---------- Diagram ---------- */
+  const H = 52;
+  const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
   (function diagram() {
-    const svg = $("#diagram");
-    const W = 150, H = 56;
-    const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
     let out = "";
+    out += '<rect class="zone" data-part="zone" x="100" y="104" width="240" height="312" rx="18"></rect>';
+    out += '<text class="zone-lbl" x="114" y="407">AMADEUS</text>';
 
-    // Amadeus zone
-    out += '<rect class="zone" x="168" y="140" width="508" height="140" rx="14"></rect>';
-    out += '<text class="zone-lbl" x="182" y="162">AMADEUS PLATFORM</text>';
-
-    // Edges: curved from right side of source to left side of target
-    EDGES.forEach(([a, b], i) => {
+    EDGES.forEach(([a, b]) => {
       const s = byId[a], t = byId[b];
-      const x1 = s.x + W / 2, y1 = s.y, x2 = t.x - W / 2, y2 = t.y;
-      const mx = (x1 + x2) / 2;
-      out += '<path class="edge flow" d="M' + x1 + "," + y1 + " C" + mx + "," + y1 + " " + mx + "," + y2 + " " + x2 + "," + y2 + '"></path>';
+      const y1 = s.y + H / 2, y2 = t.y - H / 2, my = (y1 + y2) / 2;
+      out += '<path class="edge" data-a="' + a + '" data-b="' + b + '" d="M' + s.x + "," + y1 + " C" + s.x + "," + my + " " + t.x + "," + my + " " + t.x + "," + y2 + '"></path>';
     });
-
-    // SIA's own IT: shown off the path, with a dashed link to SIA to say "untouched"
-    const sia = byId.sia, siait = byId.siait;
-    out += '<path class="edge blocked" d="M' + (siait.x + W / 2) + "," + siait.y + " L" + (sia.x - W / 2) + "," + sia.y + '"></path>';
+    // Exfiltration loop back to the attacker, only shown at stage 6
+    out += '<path class="edge exfil" data-part="exfil" d="M' + (byId.pnr.x + byId.pnr.w / 2) + "," + byId.pnr.y + " C428," + byId.pnr.y + " 428," + byId.attacker.y + " " + (byId.attacker.x + byId.attacker.w / 2) + "," + byId.attacker.y + '"></path>';
+    // SIA's own IT: off the attack path
+    out += '<path class="edge safe-link" data-a="sia" data-b="siait" d="M' + byId.sia.x + "," + (byId.sia.y + H / 2) + " L" + byId.siait.x + "," + (byId.siait.y - H / 2) + '"></path>';
 
     NODES.forEach((n) => {
-      out += '<g class="node ' + n.kind + '" tabindex="0" role="button" data-id="' + n.id + '" aria-label="' + esc(n.label + ", " + n.sub) + '">' +
-        '<rect x="' + (n.x - W / 2) + '" y="' + (n.y - H / 2) + '" width="' + W + '" height="' + H + '" rx="10"></rect>' +
-        '<text class="t" x="' + n.x + '" y="' + (n.y - 4) + '" text-anchor="middle">' + esc(n.label) + "</text>" +
+      out += '<g class="node ' + n.kind + '" data-id="' + n.id + '">' +
+        '<rect x="' + (n.x - n.w / 2) + '" y="' + (n.y - H / 2) + '" width="' + n.w + '" height="' + H + '" rx="12"></rect>' +
+        '<text class="t" x="' + n.x + '" y="' + (n.y - 3) + '" text-anchor="middle">' + esc(n.label) + "</text>" +
         '<text class="s" x="' + n.x + '" y="' + (n.y + 14) + '" text-anchor="middle">' + esc(n.sub) + "</text>" +
       "</g>";
     });
-    svg.innerHTML = out;
-
-    const panel = $("#nodePanel");
-    function select(id) {
-      svg.querySelectorAll(".node").forEach((g) => g.classList.toggle("sel", g.dataset.id === id));
-      const n = byId[id];
-      const st = stageById[n.stage];
-      let extra = "";
-      if (id === "siait") {
-        extra = "<p>Singapore Airlines confirmed its own IT systems were not breached. The data was exposed on the vendor's side. This is the core lesson of a supply-chain breach: your data's security depends on systems you do not run.</p>";
-      } else if (n.kind === "victim") {
-        extra = "<p>" + esc(n.label) + ": " + esc(n.sub) + ". Each airline's data sat on the same shared Amadeus platform, so one weakness reached all of them.</p>";
-      }
-      panel.innerHTML =
-        "<h3>" + esc(n.label) + " " + pill(st.tag) + "</h3>" +
-        extra +
-        "<p>" + esc(st.what) + "</p>" +
-        '<p class="jump"><a href="#stage-' + st.id + '" data-open="' + st.id + '">Stage ' + st.n + ": " + esc(st.name) + " &rarr;</a></p>";
-    }
-    svg.addEventListener("click", (e) => {
-      const g = e.target.closest(".node");
-      if (g) select(g.dataset.id);
-    });
-    svg.addEventListener("keydown", (e) => {
-      if ((e.key === "Enter" || e.key === " ") && e.target.closest(".node")) {
-        e.preventDefault();
-        select(e.target.closest(".node").dataset.id);
-      }
-    });
-    select("account");
+    $("#diagram").innerHTML = out;
   })();
 
-  /* Lifecycle stages */
-  $("#stages").innerHTML = STAGES.map((s) =>
-    '<article class="stage" id="stage-' + s.id + '" data-tag="' + s.tag + '">' +
-      '<button aria-expanded="false"><span class="n">' + String(s.n).padStart(2, "0") + "</span>" +
-        "<span><span class=\"nm\">" + esc(s.name) + " " + pill(s.tag) + '</span><span class="tc">' + esc(s.tactic) + "</span></span>" +
-        '<span class="chev" aria-hidden="true">&#9656;</span></button>' +
-      '<div class="body">' +
-        "<p>" + esc(s.what) + "</p>" +
-        "<dl>" +
-          "<div><dt>Confirmed</dt><dd>" + esc(s.confirmed) + "</dd></div>" +
-          "<div><dt>Still unknown</dt><dd>" + esc(s.unknown) + "</dd></div>" +
-          "<div><dt>Likely (my analysis)</dt><dd>" + esc(s.likely) + "</dd></div>" +
-          "<div><dt>Control that would have helped</dt><dd class=\"fix\">" + esc(s.control) + "</dd></div>" +
-        "</dl>" + cite(s.src) +
-      "</div>" +
-    "</article>"
-  ).join("");
-
-  function toggleStage(el, force) {
-    const open = force === undefined ? !el.classList.contains("open") : force;
-    el.classList.toggle("open", open);
-    el.querySelector("button").setAttribute("aria-expanded", String(open));
+  // On small screens, zoom the diagram to the parts lit for the current stage.
+  const svgEl = $("#diagram");
+  const mobile = window.matchMedia("(max-width: 900px)");
+  const FULL = [0, 0, 440, 640];
+  let vb = FULL.slice(), anim = 0;
+  function setVB(v) { svgEl.setAttribute("viewBox", v.map((n) => n.toFixed(1)).join(" ")); }
+  function zoomTo(on) {
+    let target = FULL;
+    if (mobile.matches) {
+      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+      svgEl.querySelectorAll(".lit").forEach((el) => {
+        const b = el.getBBox();
+        x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y);
+        x2 = Math.max(x2, b.x + b.width); y2 = Math.max(y2, b.y + b.height);
+      });
+      if (isFinite(x1)) {
+        const pad = 18;
+        x1 -= pad; y1 -= pad; x2 += pad; y2 += pad;
+        // keep a landscape-ish frame so labels stay large
+        const minW = 260, minH = 170;
+        if (x2 - x1 < minW) { const c = (x1 + x2) / 2; x1 = c - minW / 2; x2 = c + minW / 2; }
+        if (y2 - y1 < minH) { const c = (y1 + y2) / 2; y1 = c - minH / 2; y2 = c + minH / 2; }
+        target = [x1, y1, x2 - x1, y2 - y1];
+      }
+    }
+    const from = vb.slice(), t0 = performance.now(), dur = reduced ? 0 : 650;
+    cancelAnimationFrame(anim);
+    (function step(now) {
+      const p = dur ? Math.min((now - t0) / dur, 1) : 1;
+      const e = 1 - Math.pow(1 - p, 3);
+      vb = from.map((f, i) => f + (target[i] - f) * e);
+      setVB(vb);
+      if (p < 1) anim = requestAnimationFrame(step);
+    })(t0);
   }
-  $("#stages").addEventListener("click", (e) => {
-    const b = e.target.closest(".stage > button");
-    if (b) toggleStage(b.parentElement);
-  });
-  toggleStage($("#stage-creds"), true);
+  let currentStage = null;
+  mobile.addEventListener("change", () => currentStage && focus(currentStage));
 
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest("[data-open]");
-    if (!a) return;
-    e.preventDefault();
-    const el = document.getElementById("stage-" + a.dataset.open);
-    el.classList.remove("hidden");
-    toggleStage(el, true);
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    el.classList.add("flash");
-    setTimeout(() => el.classList.remove("flash"), 1400);
-  });
-
-  document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => {
-    document.querySelectorAll(".chip").forEach((x) => x.classList.toggle("active", x === c));
-    const f = c.dataset.filter;
-    document.querySelectorAll(".stage").forEach((s) => s.classList.toggle("hidden", f !== "all" && s.dataset.tag !== f));
-  }));
-
-  /* Controls */
-  $("#controls").innerHTML = CONTROLS.map((o) =>
-    '<div class="owner"><h3>' + esc(o.owner) + "</h3>" +
-      o.items.map((i) => '<div class="item"><h4>' + esc(i.title) + "</h4><p>" + esc(i.body) + '</p><span class="dom">' + esc(i.domain) + "</span></div>").join("") +
-    "</div>"
-  ).join("");
-
-  /* Takeaways */
-  $("#takeawaysList").innerHTML = TAKEAWAYS.map((t) => "<li>" + esc(t) + "</li>").join("");
-
-  /* Sources */
-  $("#sourcesList").innerHTML = Object.values(SOURCES).map((s, i) =>
-    "<li>[" + (i + 1) + '] <a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + "</a></li>"
-  ).join("");
-
-  /* Highlight current section in nav */
-  const links = [...document.querySelectorAll(".toc a")];
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((en) => {
-      if (en.isIntersecting) links.forEach((l) => l.classList.toggle("on", l.getAttribute("href") === "#" + en.target.id));
+  function focus(stageId) {
+    currentStage = stageId;
+    const on = new Set(FOCUS[stageId] || []);
+    $$("#diagram .node").forEach((g) => {
+      const lit = on.has(g.dataset.id);
+      g.classList.toggle("lit", lit);
+      g.classList.toggle("dim", !lit);
     });
-  }, { rootMargin: "-40% 0px -55% 0px" });
-  document.querySelectorAll("main section").forEach((s) => io.observe(s));
+    $$("#diagram .edge").forEach((p) => {
+      const lit = p.dataset.part ? on.has(p.dataset.part) : on.has(p.dataset.a) && on.has(p.dataset.b);
+      p.classList.toggle("lit", lit);
+    });
+    $("#diagram .zone").classList.toggle("lit", on.has("zone"));
+    zoomTo(on);
+    const st = STAGES.find((s) => s.id === stageId);
+    $("#diagramCap").textContent = "Stage " + String(st.n).padStart(2, "0") + " / " + st.name;
+  }
+
+  /* ---------- Lifecycle steps ---------- */
+  $("#steps").innerHTML = STAGES.map((s) =>
+    '<article class="step" data-stage="' + s.id + '" id="stage-' + s.id + '"><div class="step-card">' +
+      '<span class="num">' + String(s.n).padStart(2, "0") + "</span> " + pill(s.tag) +
+      "<h3>" + esc(s.name) + "</h3>" +
+      '<p class="tactic">' + esc(s.tactic) + "</p>" +
+      '<p class="what">' + esc(s.what) + "</p>" +
+      "<dl>" +
+        "<div><dt>Confirmed</dt><dd>" + esc(s.confirmed) + "</dd></div>" +
+        "<div><dt>Still unknown</dt><dd>" + esc(s.unknown) + "</dd></div>" +
+        "<div><dt>Likely (my analysis)</dt><dd>" + esc(s.likely) + "</dd></div>" +
+        '<div class="fix"><dt>Control that would have helped</dt><dd>' + esc(s.control) + "</dd></div>" +
+      "</dl>" + cite(s.src) +
+    "</div></article>"
+  ).join("");
+
+  focus(STAGES[0].id);
+  $(".step").classList.add("active");
+
+  const stepIO = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      $$(".step").forEach((s) => s.classList.toggle("active", s === en.target));
+      focus(en.target.dataset.stage);
+    });
+  }, { rootMargin: "-45% 0px -45% 0px" });
+  $$(".step").forEach((s) => stepIO.observe(s));
+
+  /* ---------- Controls ---------- */
+  $("#controls").innerHTML = CONTROLS.map((o, oi) => {
+    const parts = o.owner.match(/^(.*?)\s*\((.*)\)$/) || [null, o.owner, ""];
+    return '<div class="owner"><h3 class="reveal"><small>' + esc(parts[2]) + "</small>" + esc(parts[1]) + "</h3>" +
+      o.items.map((i, k) =>
+        '<div class="item reveal"' + delay(k, 80) + "><h4>" + esc(i.title) + "</h4><p>" + esc(i.body) + '</p><span class="dom">' + esc(i.domain) + "</span></div>"
+      ).join("") +
+    "</div>";
+  }).join("");
+
+  /* ---------- Takeaways and sources ---------- */
+  $("#takeawaysList").innerHTML = TAKEAWAYS.map((t, i) => '<li class="reveal"' + delay(i, 70) + ">" + esc(t) + "</li>").join("");
+  $("#sourcesList").innerHTML = Object.values(SOURCES).map((s) =>
+    '<li><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.label) + "</a></li>"
+  ).join("");
+
+  /* ---------- Scroll reveal ---------- */
+  const revealIO = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      en.target.classList.add("in");
+      en.target.querySelectorAll("[data-count]").forEach(countUp);
+      revealIO.unobserve(en.target);
+    });
+  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+  $$(".reveal").forEach((el) => revealIO.observe(el));
+
+  /* ---------- Scroll-linked: progress bar, nav, timeline rail ---------- */
+  const progress = $("#progress"), nav = $(".topnav"), railFill = $("#railFill");
+  const eventsWrap = $(".events-wrap"), events = $$(".event");
+  const links = $$(".links a");
+  const sections = links.map((l) => document.querySelector(l.getAttribute("href")));
+  let ticking = false;
+
+  function onScroll() {
+    ticking = false;
+    const y = window.scrollY, vh = window.innerHeight;
+    const max = document.documentElement.scrollHeight - vh;
+    progress.style.width = (max > 0 ? (y / max) * 100 : 0) + "%";
+    nav.classList.toggle("scrolled", y > 8);
+
+    const r = eventsWrap.getBoundingClientRect();
+    const line = vh * 0.62;
+    railFill.style.height = Math.max(0, Math.min(line - r.top, r.height)) + "px";
+    events.forEach((ev) => ev.classList.toggle("lit", ev.getBoundingClientRect().top + 12 < line));
+
+    let current = -1;
+    sections.forEach((s, i) => { if (s.getBoundingClientRect().top < vh * 0.4) current = i; });
+    links.forEach((l, i) => l.classList.toggle("on", i === current));
+  }
+  window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  window.addEventListener("resize", onScroll);
+  onScroll();
 })();

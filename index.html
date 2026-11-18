@@ -5,88 +5,119 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Breach Lifecycle: SIA x Amadeus</title>
   <meta name="description" content="An interactive case study of the 2026 Amadeus booking-system breach that exposed 46,000 Singapore Airlines bookings: attack lifecycle, MITRE ATT&CK mapping and what could have been done differently.">
+  <meta name="theme-color" content="#ffffff">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
-  <header class="hero">
-    <div class="wrap">
-      <p class="eyebrow">Incident case study &middot; Supply-chain breach &middot; Nov 2026</p>
-      <h1>46,000 bookings.<br><span>Zero SIA systems breached.</span></h1>
-      <p class="lede">How attackers spent more than three years inside Amadeus, the booking platform behind many of the world's airlines, and walked away with Singapore Airlines passenger data without ever touching SIA's own network.</p>
-      <div class="stats" id="stats"></div>
-      <p class="note">Based on public reporting up to 18 November 2026. The investigation is ongoing. Every claim is tagged <span class="pill confirmed">Confirmed</span> or <span class="pill inferred">Inferred</span> and linked to a source.</p>
-    </div>
-  </header>
+  <div class="progress" id="progress" aria-hidden="true"></div>
 
-  <nav class="toc" aria-label="Sections">
-    <div class="wrap">
-      <a href="#timeline">Timeline</a>
-      <a href="#path">Attack path</a>
-      <a href="#lifecycle">Lifecycle</a>
-      <a href="#different">What could change</a>
-      <a href="#takeaways">Takeaways</a>
-      <a href="#sources">Sources</a>
+  <nav class="topnav" aria-label="Sections">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top"><span class="dot"></span>Breach Lifecycle</a>
+      <div class="links">
+        <a href="#timeline">Timeline</a>
+        <a href="#lifecycle">Lifecycle</a>
+        <a href="#different">What could change</a>
+        <a href="#takeaways">Takeaways</a>
+        <a href="#sources">Sources</a>
+      </div>
     </div>
   </nav>
 
-  <main>
-    <section id="timeline" class="wrap">
-      <h2><span class="num">01</span> Timeline</h2>
-      <p class="sub">The access lasted three years. The disclosures came within three weeks.</p>
-      <div class="ribbon" id="ribbon" aria-hidden="true"></div>
-      <ol class="events" id="events"></ol>
-    </section>
+  <header class="hero" id="top">
+    <div class="wrap">
+      <p class="eyebrow reveal">Incident case study <i>/</i> Supply-chain breach <i>/</i> November 2026</p>
+      <h1 class="reveal">46,000 bookings.<br><em>Zero SIA systems breached.</em></h1>
+      <p class="lede reveal">For more than three years, attackers sat inside Amadeus, the booking platform behind many of the world's airlines. They walked away with Singapore Airlines passenger data without ever touching SIA's own network. This is how it happened, stage by stage.</p>
+      <div class="stats" id="stats"></div>
+      <p class="note reveal">Based on public reporting up to 18 November 2026. The investigation is ongoing. Every claim is tagged <span class="pill confirmed">Confirmed</span> or <span class="pill inferred">Inferred</span> and linked to a source.</p>
+      <a class="scroll-cue reveal" href="#timeline">Scroll to begin <span aria-hidden="true">&darr;</span></a>
+    </div>
+  </header>
 
-    <section id="path" class="wrap">
-      <h2><span class="num">02</span> Attack path</h2>
-      <p class="sub">Click any node to see what happened at that point. Note where SIA sits: downstream, never on the path.</p>
-      <div class="diagram-card">
-        <p class="swipe">Swipe sideways to see the full path.</p><div class="diagram-scroll"><svg id="diagram" viewBox="0 0 900 420" role="img" aria-label="Attack path from attacker through an Amadeus system account and booking display environment to shared booking data used by multiple airlines"></svg></div>
-        <div class="legend">
-          <span><i class="k threat"></i>Threat</span>
-          <span><i class="k pivot"></i>Abused identity</span>
-          <span><i class="k vendor"></i>Vendor (Amadeus)</span>
-          <span><i class="k victim"></i>Affected airline</span>
-          <span><i class="k safe"></i>Not breached</span>
+  <main>
+    <section id="timeline" class="band">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">01 / Timeline</span>
+          <h2>Three years inside. <em>Two weeks</em> to tell everyone.</h2>
+        </div>
+        <div class="ribbon reveal" id="ribbon" aria-hidden="true"></div>
+        <div class="events-wrap">
+          <span class="rail" aria-hidden="true"><span class="rail-fill" id="railFill"></span></span>
+          <ol class="events" id="events"></ol>
         </div>
       </div>
-      <div class="node-panel" id="nodePanel" aria-live="polite"></div>
     </section>
 
-    <section id="lifecycle" class="wrap">
-      <h2><span class="num">03</span> Lifecycle, stage by stage</h2>
-      <p class="sub">Mapped to MITRE ATT&amp;CK tactics. Filter to see how much is actually known.</p>
-      <div class="filters" role="group" aria-label="Filter stages">
-        <button class="chip active" data-filter="all">All stages</button>
-        <button class="chip" data-filter="confirmed">Confirmed only</button>
-        <button class="chip" data-filter="inferred">Inferred only</button>
+    <section id="lifecycle" class="scrolly-wrap">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">02 / Attack lifecycle</span>
+          <h2>Eight stages, <em>one shared platform.</em></h2>
+          <p class="sub">Scroll through each stage. The diagram lights up the part of the attack it describes. Stages are mapped to MITRE ATT&amp;CK tactics.</p>
+        </div>
+        <div class="scrolly">
+          <div class="sticky">
+            <figure class="diagram-card">
+              <figcaption class="diagram-cap" id="diagramCap">Stage 01</figcaption>
+              <svg id="diagram" viewBox="0 0 440 640" role="img" aria-label="Attack path: attacker, Amadeus system account, booking display environment, shared booking records, then Singapore Airlines, Cathay Pacific, Japan Airlines and five more airlines. SIA's own IT sits off the path."></svg>
+              <div class="legend">
+                <span><i class="k threat"></i>Threat</span>
+                <span><i class="k pivot"></i>Abused identity</span>
+                <span><i class="k vendor"></i>Amadeus</span>
+                <span><i class="k victim"></i>Airline</span>
+                <span><i class="k safe"></i>Not breached</span>
+              </div>
+            </figure>
+          </div>
+          <div class="steps" id="steps"></div>
+        </div>
       </div>
-      <div class="stages" id="stages"></div>
     </section>
 
-    <section id="different" class="wrap">
-      <h2><span class="num">04</span> What could have been done differently</h2>
-      <p class="sub">Split by who owns the control, and mapped to CompTIA Security+ (SY0-701) domains.</p>
-      <div class="controls" id="controls"></div>
+    <section id="different" class="band soft">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">03 / What could have been done differently</span>
+          <h2>Who owned <em>which</em> control.</h2>
+          <p class="sub">Split by owner and mapped to CompTIA Security+ (SY0-701) domains.</p>
+        </div>
+        <div class="controls" id="controls"></div>
+      </div>
     </section>
 
-    <section id="takeaways" class="wrap">
-      <h2><span class="num">05</span> Takeaways</h2>
-      <ol class="takeaways" id="takeawaysList"></ol>
+    <section id="takeaways" class="band">
+      <div class="wrap narrow">
+        <div class="section-head reveal">
+          <span class="kicker">04 / Takeaways</span>
+          <h2>What this breach <em>teaches.</em></h2>
+        </div>
+        <ol class="takeaways" id="takeawaysList"></ol>
+      </div>
     </section>
 
-    <section id="sources" class="wrap">
-      <h2><span class="num">06</span> Sources</h2>
-      <p class="sub">Primary statements from Amadeus and the airlines, as reported. Where sources disagreed, the more conservative figure is used.</p>
-      <ul class="sources" id="sourcesList"></ul>
+    <section id="sources" class="band soft">
+      <div class="wrap narrow">
+        <div class="section-head reveal">
+          <span class="kicker">05 / Sources</span>
+          <h2>Where every fact <em>comes from.</em></h2>
+          <p class="sub">Primary statements from Amadeus and the airlines, as reported. Where sources disagreed, the more conservative figure is used.</p>
+        </div>
+        <ol class="sources" id="sourcesList"></ol>
+      </div>
     </section>
   </main>
 
-  <footer class="wrap foot">
-    <p>Independent study project for learning incident analysis. Not affiliated with Singapore Airlines, Amadeus or any airline named. Inferred items are my own reasoning and are clearly labelled.</p>
+  <footer class="foot">
+    <div class="wrap">
+      <p class="foot-title">Breach Lifecycle</p>
+      <p>Independent study project for learning incident analysis. Not affiliated with Singapore Airlines, Amadeus or any airline named. Inferred items are my own reasoning and are clearly labelled.</p>
+    </div>
   </footer>
 
   <script src="js/data.js"></script>

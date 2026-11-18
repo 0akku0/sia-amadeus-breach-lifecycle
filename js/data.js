@@ -240,17 +240,17 @@ const STAGES = [
   }
 ];
 
-// Network diagram nodes. x/y are in the SVG viewBox (0 0 900 420).
+// Network diagram (vertical layout). x/y are centres in the SVG viewBox (0 0 440 640).
 const NODES = [
-  { id: "attacker", label: "Attacker", sub: "unidentified", x: 85, y: 210, kind: "threat", stage: "creds" },
-  { id: "account", label: "System account", sub: "valid credentials", x: 250, y: 210, kind: "pivot", stage: "access" },
-  { id: "display", label: "Booking display", sub: "contains the flaw", x: 420, y: 210, kind: "vendor", stage: "vuln" },
-  { id: "pnr", label: "Booking records", sub: "shared by airlines", x: 590, y: 210, kind: "vendor", stage: "collect" },
-  { id: "sia", label: "Singapore Airlines", sub: "46,000 records", x: 800, y: 70, kind: "victim", stage: "impact" },
-  { id: "cx", label: "Cathay Pacific", sub: "~53,000", x: 800, y: 165, kind: "victim", stage: "impact" },
-  { id: "jal", label: "Japan Airlines", sub: "~92,000", x: 800, y: 255, kind: "victim", stage: "impact" },
-  { id: "more", label: "5 more airlines", sub: "KE OZ MH NH JTA", x: 800, y: 350, kind: "victim", stage: "impact" },
-  { id: "siait", label: "SIA's own IT", sub: "not breached", x: 590, y: 60, kind: "safe", stage: "respond" }
+  { id: "attacker", label: "Attacker", sub: "unidentified", x: 220, y: 50, w: 180, kind: "threat" },
+  { id: "account", label: "System account", sub: "valid credentials", x: 220, y: 160, w: 180, kind: "pivot" },
+  { id: "display", label: "Booking display", sub: "contains the flaw", x: 220, y: 260, w: 180, kind: "vendor" },
+  { id: "pnr", label: "Booking records", sub: "shared by airlines", x: 220, y: 360, w: 180, kind: "vendor" },
+  { id: "sia", label: "SIA", sub: "46,000", x: 62, y: 480, w: 96, kind: "victim" },
+  { id: "cx", label: "Cathay", sub: "~53,000", x: 168, y: 480, w: 96, kind: "victim" },
+  { id: "jal", label: "JAL", sub: "~92,000", x: 274, y: 480, w: 96, kind: "victim" },
+  { id: "more", label: "+5 more", sub: "airlines", x: 380, y: 480, w: 96, kind: "victim" },
+  { id: "siait", label: "SIA's own IT", sub: "not breached", x: 110, y: 590, w: 180, kind: "safe" }
 ];
 
 const EDGES = [
@@ -262,6 +262,18 @@ const EDGES = [
   ["pnr", "jal"],
   ["pnr", "more"]
 ];
+
+// Which parts of the diagram light up for each lifecycle stage.
+const FOCUS = {
+  creds: ["attacker"],
+  access: ["attacker", "account"],
+  vuln: ["account", "display"],
+  collect: ["display", "pnr"],
+  dwell: ["account", "display", "pnr", "zone"],
+  exfil: ["pnr", "attacker", "exfil"],
+  respond: ["display", "account", "siait", "sia"],
+  impact: ["pnr", "sia", "cx", "jal", "more"]
+};
 
 // What could have been done differently, split by who owns the control.
 // Mapped to CompTIA Security+ SY0-701 domains.
